@@ -1,65 +1,97 @@
 package controllers
 
 import (
-	"database/sql"
-	"fmt"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strconv"
 
-	"restapi.com/models"
-	"restapi.com/pkg"
+	"restapi.com/database"
 )
 
-func GetEmployees() ([]*models.Employee, error) {
-	db := pkg.DbConn
-	rows, err := db.Query("SELECT * FROM employeedata")
+func GetEmployees(w http.ResponseWriter, r *http.Request) {
+
+	data, err := database.GetEmployees(nil)
 	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	employees := make([]*models.Employee, 0)
-	for rows.Next() {
-		emp := models.Employee{}
-		err := rows.Scan(&emp.Id, &emp.FirstName, &emp.LastName, &emp.Email, &emp.HiringDate)
-		if err != nil {
-			return nil, err
-		}
-		employees = append(employees, &emp)
+		log.Println("error while getting employee data from database", "err", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
+	rawJson, err := json.Marshal(data)
+	if err != nil {
+		log.Println("error while marshalling employee data", "err", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 
-	return employees, nil
+	w.WriteHeader(http.StatusOK)
+	w.Write(rawJson)
 }
 
-func CreateEmployee(db *sql.DB, emp models.Employee) (int64, error) {
-	query := "INSERT INTO employeedata (FirstName, LastName, Email, HiringDate) VALUES (?,?,?,?)"
-	result, err := db.Exec(query, emp.FirstName, emp.LastName, emp.Email, emp.HiringDate)
+func GetEmployee(w http.ResponseWriter, r *http.Request) {
+	empId := r.PathValue("id")
+
+	id, err := strconv.ParseUint(empId, 10, 8)
 	if err != nil {
-		return 0, err
+		log.Println("error while parsing id from path", "err", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("incorrect id in path params."))
+		return
+	}
+	uintId := uint8(id)
+
+	data, err := database.GetEmployees(&uintId)
+	if err != nil {
+		log.Println("error while getting employee data from database", "id", uintId, "err", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
+	if len(data) == 0 {
+		log.Println("requested employee data not found", "id", uintId)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("employee not found"))
 	}
-	return id, nil
+
+	rawJson, err := json.Marshal(data[0])
+	if err != nil {
+		log.Println("error while marshalling employee data", "err", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(rawJson)
+
 }
 
-func DeleteEmployee(db *sql.DB, id int64) error {
-	query := "DELETE FROM employeedata WHERE ID = ?"
-	result, err := db.Exec(query, id)
-	if err != nil {
-		return err
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("no data found with ID %d", id)
-	}
+func AddEmployee(w http.ResponseWriter, r *http.Request) {
+	/*
+	* Generate a new unique ID
+	* read data from body
+	* make an entry in database
+	* return 201 (status created)
 
-	return nil
+	 */
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PATCH only
+func UpdateEmployee(w http.ResponseWriter, r *http.Request) {
+	/*
+		Logic :
+		* read id path parameter
+		* validate it
+		* read email id from body
+		* validate email id against email-id regex (optional)
+		* find its entry in database
+		* if entry is present, then update only email
+		* handle errors wherever necessary
+
+	*/
+	w.WriteHeader(http.StatusNotImplemented)
+
 }
