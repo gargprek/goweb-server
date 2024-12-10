@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,12 +8,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"restapi.com/controllers"
-	"restapi.com/models"
 	"restapi.com/pkg"
 )
 
 const (
-	PORT         int    = 3000
+	PORT         int    = 8080
 	DATABASE_URL string = "root@tcp(127.0.0.1:3306)/abc"
 )
 
@@ -30,65 +28,73 @@ func main() {
 
 	pkg.DbConn = dbConn
 
-	http.HandleFunc("/employee", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("GET /employee", controllers.GetEmployees)
+	http.HandleFunc("GET /employee/{id}", controllers.GetEmployee)
+	http.HandleFunc("PATCH /employee/{id}", controllers.UpdateEmployee)
+	//http.HandleFunc("POST /employee", controllers.AddEmployee)
 
-		switch r.Method {
-		case http.MethodGet:
-			// do something
-			emps, err := controllers.GetEmployees()
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
-				return
-			}
+	// http.HandleFunc("/employee", func(w http.ResponseWriter, r *http.Request) {
 
-			rawJson, err := json.Marshal(emps)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("Error while unmarshalling response, %s", err.Error())))
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-			w.Write(rawJson)
-			// end of GET
-		case http.MethodPost:
-			// do something
-			var emp models.Employee
-			err := json.NewDecoder(r.Body).Decode(&emp)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(fmt.Sprintf("Error while decoding JSON, %s", err.Error())))
-				return
-			}
-			id, err := controllers.CreateEmployee(dbConn, emp)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("There is an error inserting into database, %s", err.Error())))
-				return
-			}
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(fmt.Sprintf("Employee created with ID %d", id)))
+	// 	switch r.Method {
+	// 	case http.MethodGet:
+	// 		// do something
+	// 		emps, err := controllers.GetEmployees()
+	// 		if err != nil {
+	// 			w.WriteHeader(http.StatusInternalServerError)
+	// 			w.Write([]byte(err.Error()))
+	// 			return
+	// 		}
 
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			w.Write([]byte("Method not allowed"))
-		}
+	// 		rawJson, err := json.Marshal(emps)
+	// 		if err != nil {
+	// 			w.WriteHeader(http.StatusInternalServerError)
+	// 			w.Write([]byte(fmt.Sprintf("Error while unmarshalling response, %s", err.Error())))
+	// 			return
+	// 		}
+	// 		w.WriteHeader(http.StatusOK)
+	// 		w.Write(rawJson)
+	// 		// end of GET
+	// 	case http.MethodPost:
+	// 		// do something
+	// 		var emp models.Employee
+	// 		err := json.NewDecoder(r.Body).Decode(&emp)
+	// 		if err != nil {
+	// 			w.WriteHeader(http.StatusBadRequest)
+	// 			w.Write([]byte(fmt.Sprintf("Error while decoding JSON, %s", err.Error())))
+	// 			return
+	// 		}
+	// 		id, err := controllers.CreateEmployee(dbConn, emp)
+	// 		if err != nil {
+	// 			w.WriteHeader(http.StatusInternalServerError)
+	// 			w.Write([]byte(fmt.Sprintf("There is an error inserting into database, %s", err.Error())))
+	// 			return
+	// 		}
+	// 		w.WriteHeader(http.StatusCreated)
+	// 		w.Write([]byte(fmt.Sprintf("Employee created with ID %d", id)))
 
-	})
+	// 	default:
+	// 		w.WriteHeader(http.StatusMethodNotAllowed)
+	// 		w.Write([]byte("Method not allowed"))
+	// 	}
 
-	http.HandleFunc("/employee/{Id}", func(w http.ResponseWriter, r *http.Request) {
-		// do function for delete
+	// })
 
-		err := controllers.DeleteEmployee(dbConn, Id)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Error while deleting employee data, %s", err.Error())))
-			return
-		}
+	// 	http.HandleFunc("/employee/{Id}", func(w http.ResponseWriter, r *http.Request) {
+	// 	// 	// do function for delete
+	// 		idString := req.PathValue("id")
+	// 	 	err := controllers.DeleteEmployee(dbConn, idString)
+	// 	 	if err != nil {
+	// 	 		w.WriteHeader(http.StatusInternalServerError)
+	// 	 		w.Write([]byte(fmt.Sprintf("Error while deleting employee data, %s", err.Error())))
+	// 	 		return
+	// 	 	}
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("Employee with id %d is deleted", Id)))
+	// 	 	w.WriteHeader(http.StatusOK)
+	// 	 	w.Write([]byte(fmt.Sprintf("Employee with id %d is deleted", Id)))
 
-	})
+	// 	})
+
+	log.Println("server is starting on port", PORT)
+
 	http.ListenAndServe(fmt.Sprintf(":%d", PORT), nil)
 }
